@@ -30,7 +30,7 @@ local equation = x * 2 + y
 print( equation:eval({ x = 5, y = 2 }) ) -- 12
 
 -- Symbolic differentation
-print( equation:d("x") ) -- 1 * 2 + x * 0 + y (simplifies to 2 + y)
+print( equation:d(x) ) -- 1 * 2 + x * 0 + 0 (simplifies to 2)
 ```
 
 And vector math

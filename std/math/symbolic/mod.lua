@@ -125,7 +125,7 @@ function Equation:eval(state)
 	elseif v == tv.Exponentation then
 		return self.data[1]:eval(state) ^ self.data[2]:eval(state)
 	elseif v == tv.Symbol then
-		return assert(state[self.data], "Undefined variable at runtime")
+		return assert(state[self.data], "Undefined variable at runtime: " .. self.data)
 	elseif v == tv.Number then
 		return self.data
 	end
@@ -135,8 +135,15 @@ function Equation:const()
 	return self.variant == EquationVariant.Number
 end
 
+---@param val string|Equation
+---@param state table<string, number>
 ---@return Equation
 function Equation:d(val, state)
+	if getmetatable(val) == Equation then
+		assert(val.variant == EquationVariant.Symbol, "Cannot differentiate by equation")
+		val = val.data
+	end
+
 	local v, tv = self.variant, EquationVariant
 	if v == tv.Number then
 		return Equation.new(tv.Number, 0)
@@ -171,7 +178,7 @@ function Equation:d(val, state)
 		if val == self.data then
 			return Equation.new(tv.Number, 1)
 		else
-			return self.data
+			return Equation.new(tv.Number, 0) -- Treat as constant, not deriving by symbol.
 		end
 	end
 
@@ -184,5 +191,6 @@ function Symbol(ident)
 end
 
 return {
-	Symbol = Symbol
+	Symbol = Symbol,
+	Equation = Equation
 }

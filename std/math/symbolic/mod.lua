@@ -29,7 +29,8 @@ local EquationVariant = {
 	Negation = 10,
 
 	Sin = 11,
-	Cos = 12
+	Cos = 12,
+	Inverse = 13,
 }
 
 ---@param ident string
@@ -49,21 +50,23 @@ function Equation:__tostring()
 	elseif v == tv.Symbol then
 		return self.data
 	elseif v == tv.Addition then
-		return string.format("%s + %s", self.data[1], self.data[2])
+		return string.format("(%s + %s)", self.data[1], self.data[2])
 	elseif v == tv.Subtraction then
-		return string.format("%s - %s", self.data[1], self.data[2])
+		return string.format("(%s - %s)", self.data[1], self.data[2])
 	elseif v == tv.Multiplication then
-		return string.format("%s * %s", self.data[1], self.data[2])
+		return string.format("(%s * %s)", self.data[1], self.data[2])
 	elseif v == tv.Division then
-		return string.format("%s / %s", self.data[1], self.data[2])
+		return string.format("(%s / %s)", self.data[1], self.data[2])
 	elseif v == tv.Negation then
 		return string.format("-%s", self.data)
 	elseif v == tv.Exponentation then
-		return string.format("%s ^ %s", self.data[1], self.data[2])
+		return string.format("(%s ^ %s)", self.data[1], self.data[2])
 	elseif v == tv.Sin then
 		return string.format("sin(%s)", self.data)
 	elseif v == tv.Cos then
 		return string.format("cos(%s)", self.data)
+	elseif v == tv.Inverse then
+		return string.format("(inverse %s)", self.data)
 	else
 		return "Unimplemented: " .. v
 	end
@@ -125,6 +128,8 @@ end
 
 ---@param state table<string, number>
 function Equation:eval(state)
+	state = state or {}
+
 	local v, tv = self.variant, EquationVariant
 	if v == tv.Number then
 		return self.data
@@ -146,9 +151,34 @@ function Equation:eval(state)
 		return math.sin(self.data:eval(state))
 	elseif v == tv.Cos then
 		return math.cos(self.data:eval(state))
+	elseif v == tv.Inverse then
+		---@type Equation
+		local inv = self.data
+		local v2 = inv.variant
+
+		if v2 == tv.Sin then
+			return math.asin(inv.data:eval(state))
+		elseif v2 == tv.Cos then
+			return math.acos(inv.data:eval(state))
+		elseif v2 == tv.Division then
+			---@type Equation, Equation
+			local lhs, rhs = inv.data[1], inv.data[2]
+			if lhs.variant == tv.Sin and rhs.variant == tv.Cos and lhs.data == rhs.data then -- Inverse tangent
+				return math.atan(lhs.data:eval(state))
+			end
+		end
 	end
 
 	error("Unimplemented: " .. v)
+end
+
+function Equation:invert()
+	local v, tv = self.variant, EquationVariant
+	if v == tv.Inverse then
+		return self.data -- Cancels
+	else
+		return Equation.new(tv.Inverse, self)
+	end
 end
 
 function Equation:const()
@@ -198,12 +228,61 @@ function Equation:d(val, state)
 	elseif v == tv.Negation then
 		self.data = self.data:d(val)
 		return self
-	elseif v == tv.Exponentation then
-		return Equation.new(tv.Exponentation, {self.data[1]:eval(state), self.data[2]:eval(state)})
+	elseif v == tv.Exponentation then -- Todo: This is wrong
+		return Equation.new(tv.Exponentation, {self.data[1]:d(state), self.data[2]:d(state)})
 	elseif v == tv.Sin then -- cos(x) * dx
 		return Equation.new(tv.Multiplication, {Equation.new(tv.Cos, self.data), self.data:d(val)})
 	elseif v == tv.Cos then -- -sin(x) * dx
 		return Equation.new(tv.Multiplication, {Equation.new(tv.Negation, Equation.new(tv.Sin, self.data)), self.data:d(val)})
+	elseif v == tv.Inverse then
+		---@type Equation
+		local inv = self.data
+		local v2 = inv.variant
+
+		if v2 == tv.Sin then -- Derivative of inverse sin
+			return Equation.new(tv.Division, { -- 1 / sqrt(1 - x^2) * dx
+				inv.data:d(val, state),
+				Equation.new(tv.Exponentation, {
+					Equation.new(tv.Subtraction, {
+						Number(1),
+						Equation.new(tv.Exponentation, {
+							inv.data,
+							Number(2)
+						})
+					}),
+					Number(1 / 2)
+				})
+			})
+		elseif v2 == tv.Cos then
+			return Equation.new(tv.Division, { -- -1 / sqrt(1 - x^2) * dx
+				Equation.new(tv.Multiplication, {
+					Number(-1),
+					inv.data:d(val, state)
+				}),
+				Equation.new(tv.Exponentation, {
+					Equation.new(tv.Subtraction, {
+						Number(1),
+						Equation.new(tv.Exponentation, {
+							inv.data,
+							Number(2)
+						})
+					}),
+					Number(1 / 2)
+				})
+			})
+		elseif v2 == tv.Division then
+			---@type Equation, Equation
+			local lhs, rhs = inv.data[1], inv.data[2]
+			if lhs.variant == tv.Sin and rhs.variant == tv.Cos and lhs.data == rhs.data then -- Inverse tangent
+				return Equation.new(tv.Division, { -- 1 / (1 + x^2)
+					Number(1),
+					Equation.new(tv.Addition, {
+						Number(1),
+						Equation.new(tv.Exponentation, { lhs.data, 2 })
+					})
+				})
+			end
+		end
 	end
 
 	error("Unimplemented: " .. v)
@@ -211,6 +290,7 @@ end
 
 local trig = {}
 
+---@param rad number|Equation
 function trig.sin(rad)
 	if type(rad) == "number" then
 		return Equation.new(EquationVariant.Sin, Number(rad))
@@ -221,6 +301,7 @@ function trig.sin(rad)
 	end
 end
 
+---@param rad number|Equation
 function trig.cos(rad)
 	if type(rad) == "number" then
 		return Equation.new(EquationVariant.Cos, Number(rad))
@@ -231,6 +312,7 @@ function trig.cos(rad)
 	end
 end
 
+---@param rad number|Equation
 function trig.tan(rad)
 	if type(rad) == "number" then
 		return Equation.new(EquationVariant.Division, {
@@ -247,6 +329,7 @@ function trig.tan(rad)
 	end
 end
 
+---@param rad number|Equation
 function trig.csc(rad)
 	if type(rad) == "number" then
 		return Equation.new(EquationVariant.Division, {
@@ -263,6 +346,7 @@ function trig.csc(rad)
 	end
 end
 
+---@param rad number|Equation
 function trig.sec(rad)
 	if type(rad) == "number" then
 		return Equation.new(EquationVariant.Division, {
@@ -279,6 +363,7 @@ function trig.sec(rad)
 	end
 end
 
+---@param rad number|Equation
 function trig.cot(rad)
 	if type(rad) == "number" then
 		return Equation.new(EquationVariant.Division, {
@@ -293,6 +378,21 @@ function trig.cot(rad)
 	else
 		error("Invalid cot operation")
 	end
+end
+
+---@param rad number|Equation
+function trig.asin(rad)
+	return Equation.new(EquationVariant.Inverse, trig.sin(rad))
+end
+
+---@param rad number|Equation
+function trig.acos(rad)
+	return Equation.new(EquationVariant.Inverse, trig.cos(rad))
+end
+
+---@param rad number|Equation
+function trig.atan(rad)
+	return Equation.new(EquationVariant.Inverse, trig.tan(rad))
 end
 
 return {

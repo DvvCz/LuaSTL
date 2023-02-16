@@ -1,6 +1,7 @@
 # LuaSTL
 
-Standard library for lua, mostly for using lua as a command line tool.
+Standard library for lua, mostly for using lua as a command line tool.  
+Inspired by the [Rust](https://www.rust-lang.org/) standard library, alongside projects like [Sympy](https://github.com/sympy/sympy)
 
 ## Usage
 

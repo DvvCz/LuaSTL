@@ -131,10 +131,15 @@ function Equation:eval(state)
 	end
 end
 
+function Equation:const()
+	return self.variant == EquationVariant.Number
+end
+
+---@return Equation
 function Equation:d(val, state)
 	local v, tv = self.variant, EquationVariant
-	if v == tv.Integer or v == tv.Decimal then
-		return 0
+	if v == tv.Number then
+		return Equation.new(tv.Number, 0)
 	elseif v == tv.Addition then
 		return Equation.new(EquationVariant.Addition, {self.data[1]:d(val), self.data[2]:d(val) })
 	elseif v == tv.Subtraction then
@@ -142,9 +147,9 @@ function Equation:d(val, state)
 	elseif v == tv.Multiplication then
 		local lhs, rhs = self.data[1], self.data[2]
 		if lhs:const() and rhs:const() then
-			return 0
+			return Equation.new(tv.Number, 0)
 		elseif lhs:const() then
-
+			error("Unimplemented")
 		else -- Product rule
 			return Equation.new(EquationVariant.Addition, {
 				Equation.new(EquationVariant.Multiplication, {
@@ -161,10 +166,16 @@ function Equation:d(val, state)
 		self.data = self.data:d(val)
 		return self
 	elseif v == tv.Exponentation then
-		return self.data[1]:eval(state) ^ self.data[2]:eval(state)
+		return Equation.new(tv.Exponentation, {self.data[1]:eval(state), self.data[2]:eval(state)})
 	elseif v == tv.Symbol then
-		error("Unimplemented: Symbol differentation")
+		if val == self.data then
+			return Equation.new(tv.Number, 1)
+		else
+			return self.data
+		end
 	end
+
+	error("Unimplemented")
 end
 
 ---@param ident string

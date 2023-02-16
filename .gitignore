@@ -1,0 +1,18 @@
+# Ignore everything, since you are meant to put this in your lua(jit) install
+**/*
+
+# Git Files
+
+!.gitignore
+!.gitattributes
+
+!LICENSE
+!README.md
+
+# Lua Files
+
+!std.lua
+!vector.lua
+
+!std
+!std/**

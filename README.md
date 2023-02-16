@@ -10,8 +10,7 @@ Then `require "std"`
 
 ### Http
 
-This has a small helper to easily make synchronous http requests.
-Currently only supports windows (using powershell).
+This has a small helper to easily make synchronous http requests (uses PowerShell/cURL internally)
 
 ```lua
 local std = require "std"

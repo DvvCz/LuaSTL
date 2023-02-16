@@ -22,15 +22,16 @@ print( std.net.http.get("https://google.com") )
 This has a small symbolic math library (just because)
 
 ```lua
-local std = require "std" -- Symbol is auto-exported
+local std = require "std"
+local sin = std.math.symbolic.trig.sin
 
 local x, y = Symbol "x", Symbol "y"
+local equation = sin(x * 5) + x * 2 + y
 
-local equation = x * 2 + y
-print( equation:eval({ x = 5, y = 2 }) ) -- 12
+print( equation:eval { x = 5, y = 2 } ) -- 12
 
 -- Symbolic differentation
-print( equation:d(x) ) -- 1 * 2 + x * 0 + 0 (simplifies to 2)
+print( equation:d(x, {}) ) -- cos(x * 5) * 1 * 5 + x * 0 + 1 * 2 + x * 0 + 0 (simplifies to 5cos(5x) + 2)
 ```
 
 And vector math

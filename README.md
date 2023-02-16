@@ -40,3 +40,28 @@ And vector math
 local std = require "std" -- Vector (alongside aliases in case of casing/typo errors are exposed with the stl)
 print( Vector(1, 2, 3) + Vector(-1, -2, -3) ) -- Vector(0.0, 0.0, 0.0)
 ```
+
+### Tests
+
+```lua
+local T = std.test.Test.new("unit test")
+
+function T.__start(state)
+	state.x = 10
+end
+
+function T.__stop(state)
+	assert(state.x == 5)
+end
+
+function T.test_foo(state)
+	print("Testing the foo")
+	state.x = state.x / 2
+end
+
+function T.test_bar(state)
+	error("the bar")
+end
+
+T:run()
+```

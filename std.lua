@@ -6,5 +6,7 @@ return {
 	graphics = require "std.graphics.mod",
 
 	math = require "std.math.mod",
-	net = require "std.net.mod"
+	net = require "std.net.mod",
+
+	test = require "std.test.mod"
 }

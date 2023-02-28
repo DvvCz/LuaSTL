@@ -58,6 +58,7 @@ Vector.Len = Vector.len
 Vector.length = Vector.len
 Vector.Length = Vector.len
 
+---@param rhs Vector?
 function Vector:dist(rhs)
 	if rhs then
 		assert(type(rhs) == "table", "expected vector for vector:dist(vector?)")
@@ -70,6 +71,16 @@ end
 Vector.Dist = Vector.dist
 Vector.distance = Vector.dist
 Vector.Distance = Vector.dist
+
+---@param rhs Vector
+function Vector:dot(rhs)
+	if rhs then
+		assert(type(rhs) == "table", "expected vector for vector:dot(rhs)")
+		return self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
+	end
+end
+
+Vector.Dot = Vector.dot
 
 _G.vec = Vector.new
 _G.vector = Vector.new
